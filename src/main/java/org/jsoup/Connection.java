@@ -10,6 +10,8 @@ import java.net.URL;
 import java.util.Collection;
 import java.util.Map;
 
+import javax.net.ssl.SSLContext;
+
 /**
  * A Connection provides a convenient interface to fetch content from the web, and parse them into Documents.
  * <p>
@@ -58,6 +60,9 @@ public interface Connection {
      * @return this Connection, for chaining
      */
     Connection url(String url);
+    
+    
+    Connection sslContext(SSLContext context ) ;
 
     /**
      * Set the proxy to use for this request. Set to <code>null</code> to disable.
@@ -325,7 +330,8 @@ public interface Connection {
      * @return this Connection, for chaining
      */
     Connection response(Response response);
-
+    
+    
     /**
      * Common methods for Requests and Responses
      * @param <T> Type of Base, either Request or Response
@@ -444,6 +450,13 @@ public interface Connection {
          * @return cookies
          */
         Map<String, String> cookies();
+        
+        /**
+         * 
+         * @param context
+         * @return
+         */
+      
     }
 
     /**
@@ -455,6 +468,11 @@ public interface Connection {
          * @return the proxy; <code>null</code> if not enabled.
          */
         Proxy proxy();
+        
+        
+        SSLContext sslContext() ;
+        
+        Request sslContext(SSLContext context ) ;
 
         /**
          * Update the proxy for this request.

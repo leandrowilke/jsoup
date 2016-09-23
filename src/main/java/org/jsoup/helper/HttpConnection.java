@@ -6,6 +6,7 @@ import org.jsoup.parser.Parser;
 import org.jsoup.parser.TokenQueue;
 
 import javax.net.ssl.*;
+
 import java.io.*;
 import java.net.*;
 import java.nio.ByteBuffer;
@@ -76,6 +77,11 @@ public class HttpConnection implements Connection {
             throw new IllegalArgumentException("Malformed URL: " + url, e);
         }
         return this;
+    }
+    
+    public Connection sslContext(SSLContext context) {
+    	req.sslContext(context);
+    	return this;
     }
 
     public Connection proxy(Proxy proxy) {
@@ -392,6 +398,7 @@ public class HttpConnection implements Connection {
         private boolean parserDefined = false; // called parser(...) vs initialized in ctor
         private boolean validateTSLCertificates = true;
         private String postDataCharset = DataUtil.defaultCharset;
+        private SSLContext sslContext;
 
         private Request() {
             timeoutMilliseconds = 3000;
@@ -511,6 +518,15 @@ public class HttpConnection implements Connection {
         public String postDataCharset() {
             return postDataCharset;
         }
+
+		public Connection.Request sslContext(SSLContext context) {
+			sslContext = context;
+			return this;
+		}
+
+		public SSLContext sslContext() {
+			return sslContext;
+		}
     }
 
     public static class Response extends HttpConnection.Base<Connection.Response> implements Connection.Response {
@@ -685,15 +701,36 @@ public class HttpConnection implements Connection {
             Validate.isTrue(executed, "Request must be executed (with .execute(), .get(), or .post() before getting response body");
             return byteData.array();
         }
-
+        
+        private static HttpURLConnection createHttpConnection(Connection.Request req)  throws IOException{
+        	HttpURLConnection conn = null;
+        	
+        	if("https".equals(req.url().getProtocol().toLowerCase())){
+        		conn = (HttpsURLConnection) (
+                        req.proxy() == null ?
+                        req.url().openConnection() :
+                        req.url().openConnection(req.proxy())
+                    );
+        		if(req.sslContext() != null){
+        			((HttpsURLConnection)conn).setSSLSocketFactory(req.sslContext().getSocketFactory());
+        		}
+        		
+            }else{
+            	conn = (HttpURLConnection) (
+                        req.proxy() == null ?
+                        req.url().openConnection() :
+                        req.url().openConnection(req.proxy())
+                    );
+            	
+            }
+        	return conn;
+        }
+        
         // set up connection defaults, and details from request
         private static HttpURLConnection createConnection(Connection.Request req) throws IOException {
-            final HttpURLConnection conn = (HttpURLConnection) (
-                req.proxy() == null ?
-                req.url().openConnection() :
-                req.url().openConnection(req.proxy())
-            );
+            final HttpURLConnection conn = createHttpConnection(req);
 
+            
             conn.setRequestMethod(req.method().name());
             conn.setInstanceFollowRedirects(false); // don't rely on native redirection support
             conn.setConnectTimeout(req.timeout());
@@ -1030,4 +1067,5 @@ public class HttpConnection implements Connection {
             return key + "=" + value;
         }
     }
+
 }
